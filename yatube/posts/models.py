@@ -37,13 +37,13 @@ class Post(models.Model):
     )
     pub_date = models.DateTimeField(
         auto_now_add=True,
-        verbose_name='Время создания поста',        
+        verbose_name='Время создания поста',
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='posts',
-        verbose_name='Автор поста',  
+        verbose_name='Автор поста',
     )
     group = models.ForeignKey(
         Group,
@@ -58,7 +58,7 @@ class Post(models.Model):
         upload_to='posts/',
         blank=True,
         verbose_name='Картинка',
-        help_text='Загрузите картинку',  
+        help_text='Загрузите картинку',
     )
 
     def __str__(self) -> str:
@@ -66,8 +66,8 @@ class Post(models.Model):
 
     class Meta:
         ordering = ('-pub_date',)
-        verbose_name = 'Пост'
-        verbose_name_plural = 'Посты' 
+        verbose_name = 'Пост',
+        verbose_name_plural = 'Посты',
 
 
 class Comment(models.Model):
@@ -108,7 +108,10 @@ class Follow(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE,
                                verbose_name='Автор',
                                related_name='following')
+
     class Meta:
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
-        UniqueConstraint(fields=('author', 'user'), name='Контроль повторной подписки')
+        UniqueConstraint(
+            fields=('author', 'user'), name='Контроль повторной подписки'
+        )

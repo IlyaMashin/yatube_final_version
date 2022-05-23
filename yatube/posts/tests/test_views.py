@@ -29,12 +29,12 @@ FOLLOW = reverse('posts:profile_follow', args=[USERNAME])
 UNFOLLOW = reverse('posts:profile_unfollow', args=[USERNAME])
 FOLLOW_INDEX = reverse('posts:follow_index')
 TEST_IMAGE = (
-            b'\x47\x49\x46\x38\x39\x61\x02\x00'
-            b'\x01\x00\x80\x00\x00\x00\x00\x00'
-            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
-            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
-            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-            b'\x0A\x00\x3B'
+    b'\x47\x49\x46\x38\x39\x61\x02\x00'
+    b'\x01\x00\x80\x00\x00\x00\x00\x00'
+    b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+    b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+    b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+    b'\x0A\x00\x3B'
 )
 
 
@@ -92,7 +92,9 @@ class PostURLTests(TestCase):
         self.assertEqual(
             response.content, response_after_delete_posts.content
         )
-        self.assertNotEqual(response_after_cache_clean.content, response.content)
+        self.assertNotEqual(
+            response_after_cache_clean.content, response.content
+        )
 
     def test_index_group_profile_correct_contexts(self):
         """
@@ -151,7 +153,7 @@ class PostURLTests(TestCase):
     def test_follow_user(self):
         """Проверка подписки на автора """
         follow_exist = Follow.objects.get_or_create(user=self.user2,
-                                             author=self.user)
+                                                    author=self.user)
         self.assertTrue(follow_exist)
 
     def test_unfollow_user(self):
@@ -159,7 +161,9 @@ class PostURLTests(TestCase):
         Follow.objects.get_or_create(user=self.user2, author=self.user)
         follow_count_before_delete = Follow.objects.count()
         Follow.objects.filter(user=self.user2, author=self.user).delete()
-        self.assertEqual(Follow.objects.count(), follow_count_before_delete-1)
+        self.assertEqual(
+            Follow.objects.count(), follow_count_before_delete - 1
+        )
 
     def test_unfollow_index_posts_count(self):
         """Проверка страницы follow_index для неподписанного пользователя"""
@@ -195,11 +199,17 @@ class PaginatorViewsTest(TestCase):
             [INDEX, self.authorized_client, settings.POSTS_ON_PAGE],
             [f'{INDEX}?page=2', self.authorized_client, posts_on_second_page],
             [GROUP_POSTS, self.authorized_client, settings.POSTS_ON_PAGE],
-            [f'{GROUP_POSTS}?page=2', self.authorized_client, posts_on_second_page],
+            [f'{GROUP_POSTS}?page=2', self.authorized_client,
+             posts_on_second_page
+             ],
             [PROFILE, self.authorized_client, settings.POSTS_ON_PAGE],
-            [f'{PROFILE}?page=2', self.authorized_client, posts_on_second_page],
+            [f'{PROFILE}?page=2', self.authorized_client,
+             posts_on_second_page
+             ],
             [FOLLOW_INDEX, self.authorized_client2, settings.POSTS_ON_PAGE],
-            [f'{FOLLOW_INDEX}?page=2', self.authorized_client2, posts_on_second_page],
+            [f'{FOLLOW_INDEX}?page=2', self.authorized_client2,
+             posts_on_second_page
+             ],
         ]
         for url, client, posts_on_page in cases:
             with self.subTest(url=url):
