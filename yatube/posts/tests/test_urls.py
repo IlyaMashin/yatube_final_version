@@ -12,11 +12,11 @@ GROUP_TITLE = 'test_group'
 GROUP_SLUG = 'test_slug'
 GROUP_DESCR = 'test_description'
 TEST_TEXT = 'test_text'
-GROUP_POSTS = reverse('posts:group_list', kwargs={'slug': GROUP_SLUG})
-PROFILE = reverse('posts:profile', kwargs={'username': USERNAME})
+GROUP_POSTS = reverse('posts:group_list', args=[GROUP_SLUG])
+PROFILE = reverse('posts:profile', args=[USERNAME])
 FOLLOW_INDEX = reverse('posts:follow_index')
-FOLLOW = reverse('posts:profile_follow', kwargs={'username': USERNAME})
-UNFOLLOW = reverse('posts:profile_unfollow', kwargs={'username': USERNAME})
+FOLLOW = reverse('posts:profile_follow', args=[USERNAME])
+UNFOLLOW = reverse('posts:profile_unfollow', args=[USERNAME])
 RANDOM_URL = '/qwerty/'
 
 
@@ -37,10 +37,9 @@ class PostURLTests(TestCase):
         )
         cls.POST_DETAIL = reverse('posts:post_detail', args=[cls.post.pk])
         cls.POST_EDIT = reverse('posts:post_edit', args=[cls.post.pk])
-        cls.ADD_COMMENT = reverse('posts:add_comment', args=[cls.post.pk])
-        cls.GUEST_ADD_COMMENT_REDIRECT = f'{AUTH_LOGIN}?next={cls.ADD_COMMENT}'
         cls.GUEST_CREATE_REDIRECT = f'{AUTH_LOGIN}?next={POST_CREATE}'
         cls.GUEST_EDIT_REDIRECT = f'{AUTH_LOGIN}?next={cls.POST_EDIT}'
+        cls.GUEST_FOLLOW_INDEX = f'{AUTH_LOGIN}?next={FOLLOW_INDEX}'
         cls.guest_client = Client()
         cls.authorized_client = Client()
         cls.authorized_client.force_login(cls.user)
@@ -77,11 +76,10 @@ class PostURLTests(TestCase):
             [self.POST_EDIT, self.authorized_client2, 302],
             [self.POST_EDIT, self.guest_client, 302],
             [self.POST_EDIT, self.authorized_client, 200],
-            [self.ADD_COMMENT, self.guest_client, 302],
-            [self.ADD_COMMENT, self.authorized_client, 302],
             [FOLLOW_INDEX, self.authorized_client, 200],
-            [FOLLOW, self.authorized_client, 302],
-            [UNFOLLOW, self.authorized_client, 302],
+            [FOLLOW_INDEX, self.guest_client, 302],
+            [FOLLOW, self.authorized_client2, 302],
+            [UNFOLLOW, self.authorized_client2, 302],
         ]
         for url, client, status, in urls_names:
             with self.subTest(
@@ -95,12 +93,9 @@ class PostURLTests(TestCase):
             [POST_CREATE, self.guest_client, self.GUEST_CREATE_REDIRECT],
             [self.POST_EDIT, self.guest_client, self.GUEST_EDIT_REDIRECT],
             [self.POST_EDIT, self.authorized_client2, self.POST_DETAIL],
-            [self.ADD_COMMENT, self.guest_client,
-                self.GUEST_ADD_COMMENT_REDIRECT
-             ],
-            [self.ADD_COMMENT, self.authorized_client, self.POST_DETAIL],
-            [FOLLOW, self.authorized_client, PROFILE],
-            [UNFOLLOW, self.authorized_client, PROFILE],
+            [FOLLOW_INDEX, self.guest_client, self.GUEST_FOLLOW_INDEX],
+            [FOLLOW, self.authorized_client2, PROFILE],
+            [UNFOLLOW, self.authorized_client2, PROFILE],
         ]
         for url, client, redirect in urls:
             with self.subTest(url=url, client=get_user(client).username):

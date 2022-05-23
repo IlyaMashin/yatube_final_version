@@ -19,15 +19,23 @@ GROUP_TITLE = 'test_group'
 GROUP_SLUG = 'test_slug'
 GROUP_DESCR = 'test_description'
 TEST_TEXT = 'test_text'
-GROUP_POSTS = reverse('posts:group_list', kwargs={'slug': GROUP_SLUG})
-PROFILE = reverse('posts:profile', kwargs={'username': USERNAME})
+GROUP_POSTS = reverse('posts:group_list', args=[GROUP_SLUG])
+PROFILE = reverse('posts:profile', args=[USERNAME])
 GROUP_TITLE_2 = 'test_group_2'
 GROUP_SLUG_2 = 'test_slug_2'
 GROUP_DESC_2 = 'test_description_2'
-GROUP_POSTS_2 = reverse('posts:group_list', kwargs={'slug': GROUP_SLUG_2})
-FOLLOW = reverse('posts:profile_follow', kwargs={'username': USERNAME})
-UNFOLLOW = reverse('posts:profile_unfollow', kwargs={'username': USERNAME})
+GROUP_POSTS_2 = reverse('posts:group_list', args=[GROUP_SLUG_2])
+FOLLOW = reverse('posts:profile_follow', args=[USERNAME])
+UNFOLLOW = reverse('posts:profile_unfollow', args=[USERNAME])
 FOLLOW_INDEX = reverse('posts:follow_index')
+TEST_IMAGE = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+)
 
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp(dir=settings.BASE_DIR))
@@ -35,17 +43,9 @@ class PostURLTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.small_gif = (
-            b'\x47\x49\x46\x38\x39\x61\x02\x00'
-            b'\x01\x00\x80\x00\x00\x00\x00\x00'
-            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
-            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
-            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-            b'\x0A\x00\x3B'
-        )
         cls.uploaded = SimpleUploadedFile(
             name='small.gif',
-            content=cls.small_gif,
+            content=TEST_IMAGE,
             content_type='image/gif'
         )
         cls.user = User.objects.create(username=USERNAME)
@@ -73,6 +73,9 @@ class PostURLTests(TestCase):
         cls.user2 = User.objects.create(username='USERNAME2')
         cls.authorized_client2 = Client()
         cls.authorized_client2.force_login(cls.user2)
+        cls.user3 = User.objects.create(username='USERNAME3')
+        cls.authorized_client3 = Client()
+        cls.authorized_client3.force_login(cls.user3)
 
     @classmethod
     def tearDownClass(cls):
@@ -81,21 +84,22 @@ class PostURLTests(TestCase):
 
     def test_index_cache(self):
         "Тестирование cache на странице index.html"
-        cache.clear()
         response = self.guest_client.get(INDEX)
         Post.objects.all().delete()
         response_after_delete_posts = self.guest_client.get(INDEX)
-        self.assertEqual(Post.objects.count(), 0)
+        cache.clear()
+        response_after_cache_clean = self.guest_client.get(INDEX)
         self.assertEqual(
             response.content, response_after_delete_posts.content
         )
+        self.assertNotEqual(response_after_cache_clean.content, response.content)
 
     def test_index_group_profile_correct_contexts(self):
         """
         Шаблоны index, group_list, profile, post_detail
         сформированы с правильным контекстом.
         """
-        self.authorized_client2.get(FOLLOW)
+        Follow.objects.get_or_create(user=self.user2, author=self.user)
         template_contexts = [
             [INDEX, self.guest_client, 'page_obj'],
             [GROUP_POSTS, self.guest_client, 'page_obj'],
@@ -117,10 +121,16 @@ class PostURLTests(TestCase):
                 self.assertEqual(post.pk, self.post.pk)
                 self.assertEqual(post.image, self.post.image)
 
-    def test_post_not_in_group2(self):
-        """Пост не отображается в другой группе"""
-        response = (self.authorized_client.get(GROUP_POSTS_2))
-        self.assertNotIn(self.post, response.context.get('page_obj'))
+    def test_post_in_other_place(self):
+        """Пост не отображается в некорректном месте."""
+        test_url = [
+            [FOLLOW_INDEX, self.authorized_client],
+            [GROUP_POSTS_2, self.authorized_client3],
+        ]
+        for url, client in test_url:
+            with self.subTest(url=url):
+                response = client.get(url)
+                self.assertNotIn(self.post, response.context['page_obj'])
 
     def test_profile_page_show_correct_context(self):
         """Проверка отображения автора в контексте profile."""
@@ -140,32 +150,21 @@ class PostURLTests(TestCase):
 
     def test_follow_user(self):
         """Проверка подписки на автора """
-        self.authorized_client2.get(FOLLOW)
-        follow_exist = Follow.objects.filter(user=self.user2,
-                                             author=self.user).exists()
+        follow_exist = Follow.objects.get_or_create(user=self.user2,
+                                             author=self.user)
         self.assertTrue(follow_exist)
 
     def test_unfollow_user(self):
         """Проверка отписки от автора """
-        self.authorized_client2.get(FOLLOW)
-        self.authorized_client2.get(UNFOLLOW)
-        follow_exist = Follow.objects.filter(user=self.user2,
-                                             author=self.user).exists()
-        self.assertFalse(follow_exist)
-
-    def test_follow_index_posts_count(self):
-        """Проверка страницы follow_index для подписанного пользователя"""
-        self.authorized_client2.get(FOLLOW)
-        response = self.authorized_client2.get(FOLLOW_INDEX)
-        self.assertEqual(Post.objects.count(), 1)
-        self.assertEqual(len(response.context['page_obj']), 1)
-        self.assertEqual(self.post, response.context.get('page_obj')[0])
+        Follow.objects.get_or_create(user=self.user2, author=self.user)
+        follow_count_before_delete = Follow.objects.count()
+        Follow.objects.filter(user=self.user2, author=self.user).delete()
+        self.assertEqual(Follow.objects.count(), follow_count_before_delete-1)
 
     def test_unfollow_index_posts_count(self):
         """Проверка страницы follow_index для неподписанного пользователя"""
-        response = self.authorized_client2.get(FOLLOW_INDEX)
-        self.assertEqual(Post.objects.count(), 1)
-        self.assertNotIn(self.post, response.context['page_obj'])
+        response = self.authorized_client3.get(FOLLOW_INDEX)
+        self.assertEqual(len(response.context['page_obj']), 0)
 
 
 class PaginatorViewsTest(TestCase):
@@ -185,20 +184,26 @@ class PaginatorViewsTest(TestCase):
                                  )
         cls.authorized_client = Client()
         cls.authorized_client.force_login(cls.user)
+        cls.user2 = User.objects.create(username='USERNAME2')
+        cls.authorized_client2 = Client()
+        cls.authorized_client2.force_login(cls.user2)
 
     def test_posts_on_page_count(self):
+        Follow.objects.get_or_create(user=self.user2, author=self.user)
         posts_on_second_page = Post.objects.count() - settings.POSTS_ON_PAGE
         cases = [
-            [INDEX, settings.POSTS_ON_PAGE],
-            [f'{INDEX}?page=2', posts_on_second_page],
-            [GROUP_POSTS, settings.POSTS_ON_PAGE],
-            [f'{GROUP_POSTS}?page=2', posts_on_second_page],
-            [PROFILE, settings.POSTS_ON_PAGE],
-            [f'{PROFILE}?page=2', posts_on_second_page],
+            [INDEX, self.authorized_client, settings.POSTS_ON_PAGE],
+            [f'{INDEX}?page=2', self.authorized_client, posts_on_second_page],
+            [GROUP_POSTS, self.authorized_client, settings.POSTS_ON_PAGE],
+            [f'{GROUP_POSTS}?page=2', self.authorized_client, posts_on_second_page],
+            [PROFILE, self.authorized_client, settings.POSTS_ON_PAGE],
+            [f'{PROFILE}?page=2', self.authorized_client, posts_on_second_page],
+            [FOLLOW_INDEX, self.authorized_client2, settings.POSTS_ON_PAGE],
+            [f'{FOLLOW_INDEX}?page=2', self.authorized_client2, posts_on_second_page],
         ]
-        for url, posts_on_page in cases:
+        for url, client, posts_on_page in cases:
             with self.subTest(url=url):
-                response = self.authorized_client.get(url)
+                response = client.get(url)
                 self.assertEqual(
                     len(response.context['page_obj']), posts_on_page
                 )
