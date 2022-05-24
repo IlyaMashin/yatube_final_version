@@ -27,29 +27,19 @@ def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
     return render(request, 'posts/group_list.html', {
         'group': group,
-        'page_obj': paginator_page(request, group.posts.all())
+        'page_obj': paginator_page(request, group.posts.all()),
     })
 
 
 def profile(request, username):
     user = get_object_or_404(User, username=username)
-    if request.user == user:
-        return render(request, 'posts/profile.html', {
-            'author': user,
-            'page_obj': paginator_page(request, user.posts.all()),
-            'request_user': False,
-        })
-    else:
-        following = (
-            request.user.is_authenticated
-            and Follow.objects.filter(user=request.user, author=user).exists()
-        )
-        return render(request, 'posts/profile.html', {
-            'author': user,
-            'following': following,
-            'page_obj': paginator_page(request, user.posts.all()),
-            'request_user': True,
-        })
+    following = request.user.is_authenticated and Follow.objects.filter(
+        user=request.user, author=user).exists()
+    return render(request, 'posts/profile.html', {
+        'author': user,
+        'following': following,
+        'page_obj': paginator_page(request, user.posts.all()),
+    })
 
 
 def post_detail(request, post_id):
@@ -122,8 +112,7 @@ def profile_follow(request, username):
 
 @login_required
 def profile_unfollow(request, username):
-    follow_object = get_object_or_404(
-        Follow, user=request.user, author__username=username
-    )
-    follow_object.delete()
+    (
+        Follow.objects.filter(user=request.user, author__username=username)
+    ).delete()
     return redirect('posts:profile', username=username)

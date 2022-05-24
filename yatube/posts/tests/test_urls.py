@@ -40,6 +40,8 @@ class PostURLTests(TestCase):
         cls.GUEST_CREATE_REDIRECT = f'{AUTH_LOGIN}?next={POST_CREATE}'
         cls.GUEST_EDIT_REDIRECT = f'{AUTH_LOGIN}?next={cls.POST_EDIT}'
         cls.GUEST_FOLLOW_INDEX = f'{AUTH_LOGIN}?next={FOLLOW_INDEX}'
+        cls.GUEST_FOLLOW = f'{AUTH_LOGIN}?next={FOLLOW}'
+        cls.GUEST_UNFOLLOW = f'{AUTH_LOGIN}?next={UNFOLLOW}'
         cls.guest_client = Client()
         cls.authorized_client = Client()
         cls.authorized_client.force_login(cls.user)
@@ -80,6 +82,8 @@ class PostURLTests(TestCase):
             [FOLLOW_INDEX, self.guest_client, 302],
             [FOLLOW, self.authorized_client2, 302],
             [UNFOLLOW, self.authorized_client2, 302],
+            [FOLLOW, self.guest_client, 302],
+            [UNFOLLOW, self.guest_client, 302],
         ]
         for url, client, status, in urls_names:
             with self.subTest(
@@ -96,6 +100,8 @@ class PostURLTests(TestCase):
             [FOLLOW_INDEX, self.guest_client, self.GUEST_FOLLOW_INDEX],
             [FOLLOW, self.authorized_client2, PROFILE],
             [UNFOLLOW, self.authorized_client2, PROFILE],
+            [FOLLOW, self.guest_client, self.GUEST_FOLLOW],
+            [UNFOLLOW, self.guest_client, self.GUEST_UNFOLLOW],
         ]
         for url, client, redirect in urls:
             with self.subTest(url=url, client=get_user(client).username):

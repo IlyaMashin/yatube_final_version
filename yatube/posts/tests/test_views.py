@@ -101,7 +101,7 @@ class PostURLTests(TestCase):
         Шаблоны index, group_list, profile, post_detail
         сформированы с правильным контекстом.
         """
-        Follow.objects.get_or_create(user=self.user2, author=self.user)
+        Follow.objects.create(user=self.user2, author=self.user)
         template_contexts = [
             [INDEX, self.guest_client, 'page_obj'],
             [GROUP_POSTS, self.guest_client, 'page_obj'],
@@ -124,7 +124,7 @@ class PostURLTests(TestCase):
                 self.assertEqual(post.image, self.post.image)
 
     def test_post_in_other_place(self):
-        """Пост не отображается в некорректном месте."""
+        """Пост отсутствует на страницах follow_index и group_posts_2."""
         test_url = [
             [FOLLOW_INDEX, self.authorized_client],
             [GROUP_POSTS_2, self.authorized_client3],
@@ -152,23 +152,26 @@ class PostURLTests(TestCase):
 
     def test_follow_user(self):
         """Проверка подписки на автора """
-        follow_exist = Follow.objects.get_or_create(user=self.user2,
-                                                    author=self.user)
-        self.assertTrue(follow_exist)
+        unfollow_status = (
+            Follow.objects.filter(user=self.user3, author=self.user2)
+        )
+        Follow.objects.create(user=self.user3, author=self.user2)
+        follow_status = (
+            Follow.objects.filter(user=self.user3, author=self.user2)
+        )
+        self.assertNotEqual(unfollow_status, follow_status)
 
     def test_unfollow_user(self):
         """Проверка отписки от автора """
-        Follow.objects.get_or_create(user=self.user2, author=self.user)
+        Follow.objects.create(user=self.user2, author=self.user)
         follow_count_before_delete = Follow.objects.count()
         Follow.objects.filter(user=self.user2, author=self.user).delete()
         self.assertEqual(
             Follow.objects.count(), follow_count_before_delete - 1
         )
-
-    def test_unfollow_index_posts_count(self):
-        """Проверка страницы follow_index для неподписанного пользователя"""
-        response = self.authorized_client3.get(FOLLOW_INDEX)
-        self.assertEqual(len(response.context['page_obj']), 0)
+        self.assertFalse(
+            Follow.objects.filter(user=self.user2, author=self.user).exists()
+        )
 
 
 class PaginatorViewsTest(TestCase):
@@ -193,7 +196,7 @@ class PaginatorViewsTest(TestCase):
         cls.authorized_client2.force_login(cls.user2)
 
     def test_posts_on_page_count(self):
-        Follow.objects.get_or_create(user=self.user2, author=self.user)
+        Follow.objects.create(user=self.user2, author=self.user)
         posts_on_second_page = Post.objects.count() - settings.POSTS_ON_PAGE
         cases = [
             [INDEX, self.authorized_client, settings.POSTS_ON_PAGE],

@@ -14,8 +14,8 @@ class Group(models.Model):
     )
     slug = models.SlugField(
         unique=True,
-        verbose_name='Ссылка на группу',
-        help_text='Ссылка на группу',
+        verbose_name='Идентификатор группы',
+        help_text='Slug это уникальная строка понятная человеку',
     )
     description = models.TextField(
         verbose_name='Описание группы',
