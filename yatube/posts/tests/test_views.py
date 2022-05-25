@@ -153,25 +153,25 @@ class PostURLTests(TestCase):
     def test_follow_user(self):
         """Проверка подписки на автора """
         unfollow_status = (
-            Follow.objects.filter(user=self.user3, author=self.user2)
+            Follow.objects.filter(user=self.user2, author=self.user)
         )
-        Follow.objects.create(user=self.user3, author=self.user2)
+        self.authorized_client2.get(FOLLOW)
         follow_status = (
-            Follow.objects.filter(user=self.user3, author=self.user2)
+            Follow.objects.filter(user=self.user2, author=self.user)
         )
         self.assertNotEqual(unfollow_status, follow_status)
 
     def test_unfollow_user(self):
         """Проверка отписки от автора """
-        Follow.objects.create(user=self.user2, author=self.user)
-        follow_count_before_delete = Follow.objects.count()
-        Follow.objects.filter(user=self.user2, author=self.user).delete()
-        self.assertEqual(
-            Follow.objects.count(), follow_count_before_delete - 1
+        self.authorized_client2.get(FOLLOW)
+        follow_status = (
+            Follow.objects.filter(user=self.user2, author=self.user)
         )
-        self.assertFalse(
-            Follow.objects.filter(user=self.user2, author=self.user).exists()
+        self.authorized_client2.get(UNFOLLOW)
+        unfollow_status = (
+            Follow.objects.filter(user=self.user2, author=self.user)
         )
+        self.assertNotEqual(follow_status, unfollow_status)
 
 
 class PaginatorViewsTest(TestCase):

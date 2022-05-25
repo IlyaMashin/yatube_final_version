@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-{% load thumbnail %}
 {% block title %}
   Профайл пользователя {{ author.get_full_name }}
 {% endblock title %}
@@ -24,7 +23,7 @@
       {% endif %}
     </div>
     {% for post in page_obj %}
-      {% include 'posts/includes/posts_items.html' with teplate=True %}
+      {% include 'posts/includes/posts_items.html' %}
     {% endfor %}
     {% include 'posts/includes/paginator.html' %}
   </div>

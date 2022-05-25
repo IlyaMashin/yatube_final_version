@@ -1,8 +1,8 @@
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect
 from django.shortcuts import get_object_or_404
-from django.conf import settings
 
 
 from .forms import PostForm, CommentForm
@@ -33,8 +33,11 @@ def group_posts(request, slug):
 
 def profile(request, username):
     user = get_object_or_404(User, username=username)
-    following = request.user.is_authenticated and Follow.objects.filter(
-        user=request.user, author=user).exists()
+    following = (
+        request.user.is_authenticated
+        and request.user != user
+        and Follow.objects.filter(user=request.user, author=user).exists()
+    )
     return render(request, 'posts/profile.html', {
         'author': user,
         'following': following,
@@ -113,6 +116,6 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     (
-        Follow.objects.filter(user=request.user, author__username=username)
+        get_object_or_404(Follow, user=request.user, author__username=username)
     ).delete()
     return redirect('posts:profile', username=username)
