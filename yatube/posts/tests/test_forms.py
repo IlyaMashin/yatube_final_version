@@ -113,11 +113,15 @@ class PostFormTests(TestCase):
         )
         self.assertEqual(post_count, Post.objects.count())
         self.assertEqual(Post.objects.count(), 1)
-        self.assertTrue(Post.objects.filter(
-            text=form_data['text'],
-            group=form_data['group'],
-            image=f'{DIR_NAME}{form_data["image"]}',
-            author=self.post.author)
+        self.assertNotEqual(response.context['post'].text, self.post.text)
+        self.assertNotEqual(response.context['post'].group, self.post.group)
+        self.assertNotEqual(response.context['post'].image, self.post.image)
+        self.assertEqual(response.context['post'].author, self.post.author)
+        self.assertTrue(
+            Post.objects.filter(text=form_data['text'],
+                                group=form_data['group'],
+                                image=f'{DIR_NAME}{form_data["image"]}',
+                                author=self.user).exists()
         )
         self.assertRedirects(response, self.POST_DETAIL)
 
@@ -136,6 +140,10 @@ class PostFormTests(TestCase):
         )
         self.assertEqual(Post.objects.count(), posts_count)
         self.assertEqual(Post.objects.count(), 1)
+        post = Post.objects.first()
+        self.assertNotEqual(form_data['text'], post.text)
+        self.assertNotEqual(form_data['group'], post.group)
+        self.assertNotEqual(form_data['image'], post.image)
         self.assertFalse(Post.objects.filter(
             text=form_data['text'],
             group=form_data['group'],
@@ -144,7 +152,6 @@ class PostFormTests(TestCase):
 
     def test_not_author_edit_post(self):
         """Проверка редактирования поста неавтором или гостем."""
-        posts_count = Post.objects.count()
         clients_list = [
             [self.POST_EDIT, self.guest_client, self.GUEST_EDIT_REDIRECT],
             [self.POST_EDIT, self.authorized_client2, self.POST_DETAIL],
@@ -156,14 +163,18 @@ class PostFormTests(TestCase):
         }
         for url, client, redirect in clients_list:
             with self.subTest(client=client):
+                posts_count = Post.objects.count()
+                self.assertEqual(Post.objects.count(), 1)
+                post_before_edit = Post.objects.first()
                 response = client.post(url, data=form_data, follow=True)
                 self.assertEqual(Post.objects.count(), posts_count)
-                self.assertEqual(Post.objects.count(), 1)
-                self.assertFalse(Post.objects.filter(
-                    text=form_data['text'],
-                    group=form_data['group'],
-                    image=form_data['image'],
-                    author=self.user2)
+                post_after_edit = Post.objects.first()
+                self.assertEqual(post_before_edit, post_after_edit)
+                self.assertFalse(
+                    Post.objects.filter(
+                        text=form_data['text'],
+                        group=form_data['group'],
+                        image=f'{DIR_NAME}{form_data["image"]}').exists()
                 )
                 self.assertRedirects(response, redirect)
 

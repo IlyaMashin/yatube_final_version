@@ -154,7 +154,7 @@ class PostURLTests(TestCase):
         """Проверка подписки на автора """
         self.authorized_client2.get(FOLLOW)
         self.assertTrue(
-            Follow.objects.filter(user=self.user2, author=self.user)
+            Follow.objects.filter(user=self.user2, author=self.user).exists()
         )
 
     def test_unfollow_user(self):
@@ -162,7 +162,7 @@ class PostURLTests(TestCase):
         Follow.objects.create(user=self.user2, author=self.user)
         self.authorized_client2.get(UNFOLLOW)
         self.assertFalse(
-            Follow.objects.filter(user=self.user2, author=self.user)
+            Follow.objects.filter(user=self.user2, author=self.user).exists()
         )
 
 
