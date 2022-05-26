@@ -12,7 +12,7 @@
     {% load cache %}
     {% cache 20 index_page %}
       {% for post in page_obj %}
-        {% include 'posts/includes/posts_items.html' %}
+        {% include 'posts/includes/post_items.html' %}
       {% endfor %}
       {% include 'posts/includes/paginator.html' %}
     {% endcache %} 

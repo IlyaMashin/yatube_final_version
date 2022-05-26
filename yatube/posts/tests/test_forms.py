@@ -57,6 +57,7 @@ class PostFormTests(TestCase):
         cls.POST_DETAIL = reverse('posts:post_detail', args=[cls.post.pk])
         cls.POST_EDIT = reverse('posts:post_edit', args=[cls.post.pk])
         cls.ADD_COMMENT = reverse('posts:add_comment', args=[cls.post.pk])
+        cls.GUEST_EDIT_REDIRECT = f'{AUTH_LOGIN}?next={cls.POST_EDIT}'
         cls.guest_client = Client()
         cls.authorized_client = Client()
         cls.authorized_client.force_login(cls.user)
@@ -90,19 +91,12 @@ class PostFormTests(TestCase):
             follow=True
         )
         self.assertEqual(Post.objects.count(), 1)
+        post = Post.objects.first()
         self.assertRedirects(response, PROFILE)
-        self.assertEqual(len(response.context['page_obj']), 1)
-        self.assertEqual(
-            form_data['text'], response.context['page_obj'][0].text
-        )
-        self.assertEqual(
-            form_data['group'], response.context['page_obj'][0].group.pk
-        )
-        self.assertEqual(
-            f'{DIR_NAME}{form_data["image"]}',
-            response.context['page_obj'][0].image.name
-        )
-        self.assertEqual(self.user, response.context['page_obj'][0].author)
+        self.assertEqual(form_data['text'], post.text)
+        self.assertEqual(form_data['group'], post.group.pk)
+        self.assertEqual(f'{DIR_NAME}{form_data["image"]}', post.image.name)
+        self.assertEqual(self.user, post.author)
 
     def test_edit_post(self):
         """Проверка сохранения поста после редактирования"""
@@ -119,11 +113,12 @@ class PostFormTests(TestCase):
         )
         self.assertEqual(post_count, Post.objects.count())
         self.assertEqual(Post.objects.count(), 1)
-        post = Post.objects.first()
-        self.assertEqual(form_data['text'], post.text)
-        self.assertEqual(form_data['group'], post.group.pk)
-        self.assertEqual(f'{DIR_NAME}{form_data["image"]}', post.image)
-        self.assertEqual(post.author, self.post.author)
+        self.assertTrue(Post.objects.filter(
+            text=form_data['text'],
+            group=form_data['group'],
+            image=f'{DIR_NAME}{form_data["image"]}',
+            author=self.post.author)
+        )
         self.assertRedirects(response, self.POST_DETAIL)
 
     def test_guest_create_new_post(self):
@@ -140,36 +135,37 @@ class PostFormTests(TestCase):
             follow=True
         )
         self.assertEqual(Post.objects.count(), posts_count)
-        post = Post.objects.filter(
+        self.assertEqual(Post.objects.count(), 1)
+        self.assertFalse(Post.objects.filter(
             text=form_data['text'],
             group=form_data['group'],
-            image=form_data['image'],
-        ).exists()
-        self.assertFalse(post)
+            image=form_data['image'],)
+        )
 
     def test_not_author_edit_post(self):
         """Проверка редактирования поста неавтором или гостем."""
         posts_count = Post.objects.count()
         clients_list = [
-            [self.POST_EDIT, self.guest_client],
-            [self.POST_EDIT, self.authorized_client2],
+            [self.POST_EDIT, self.guest_client, self.GUEST_EDIT_REDIRECT],
+            [self.POST_EDIT, self.authorized_client2, self.POST_DETAIL],
         ]
         form_data = {
             'text': 'New_post_3',
             'group': self.group_3.pk,
             'image': self.create_image('4.gif', TEST_IMAGE, 'image/gif'),
         }
-        for url, client in clients_list:
+        for url, client, redirect in clients_list:
             with self.subTest(client=client):
-                client.post(url, data=form_data, follow=True)
+                response = client.post(url, data=form_data, follow=True)
                 self.assertEqual(Post.objects.count(), posts_count)
-                post = Post.objects.filter(
+                self.assertEqual(Post.objects.count(), 1)
+                self.assertFalse(Post.objects.filter(
                     text=form_data['text'],
                     group=form_data['group'],
                     image=form_data['image'],
-                    author=self.user2
-                ).exists()
-                self.assertFalse(post)
+                    author=self.user2)
+                )
+                self.assertRedirects(response, redirect)
 
     def test_create_post_correct_contexts(self):
         """Шаблоны create/edit_post сформированы с правильным контекстом."""

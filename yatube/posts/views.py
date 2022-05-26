@@ -4,7 +4,6 @@ from django.core.paginator import Paginator
 from django.shortcuts import render, redirect
 from django.shortcuts import get_object_or_404
 
-
 from .forms import PostForm, CommentForm
 from .models import Post, Group, User, Follow
 
@@ -115,7 +114,6 @@ def profile_follow(request, username):
 
 @login_required
 def profile_unfollow(request, username):
-    (
-        get_object_or_404(Follow, user=request.user, author__username=username)
-    ).delete()
+    get_object_or_404(
+        Follow, user=request.user, author__username=username).delete()
     return redirect('posts:profile', username=username)
