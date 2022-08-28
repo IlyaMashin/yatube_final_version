@@ -53,6 +53,10 @@ class PostFormTests(TestCase):
             text=TEST_TEXT,
             author=cls.user,
             group=cls.group,
+            image=SimpleUploadedFile(
+                name='big.gif',
+                content=TEST_IMAGE,
+                content_type='image/gif')
         )
         cls.POST_DETAIL = reverse('posts:post_detail', args=[cls.post.pk])
         cls.POST_EDIT = reverse('posts:post_edit', args=[cls.post.pk])
@@ -122,7 +126,7 @@ class PostFormTests(TestCase):
 
     def test_guest_create_new_post(self):
         """Неавторизованный пользователь не может создать пост"""
-        posts_count = Post.objects.count()
+        Post.objects.all().delete()
         form_data = {
             'text': 'New_post',
             'group': self.group.pk,
@@ -133,8 +137,7 @@ class PostFormTests(TestCase):
             data=form_data,
             follow=True
         )
-        self.assertEqual(Post.objects.count(), posts_count)
-        self.assertEqual(Post.objects.count(), 1)
+        self.assertEqual(Post.objects.count(), 0)
 
     def test_not_author_edit_post(self):
         """Проверка редактирования поста неавтором или гостем."""
@@ -151,13 +154,13 @@ class PostFormTests(TestCase):
             with self.subTest(client=client):
                 posts_count = Post.objects.count()
                 self.assertEqual(posts_count, 1)
-                post_pk = Post.objects.first().pk
                 response = client.post(url, data=form_data, follow=True)
                 self.assertEqual(Post.objects.count(), posts_count)
-                try_edit_post = Post.objects.get(pk=post_pk)
-                self.assertEqual(try_edit_post.text, self.post.text)
-                self.assertEqual(try_edit_post.group, self.post.group)
-                self.assertEqual(try_edit_post.author, self.post.author)
+                post = Post.objects.get(pk=self.post.pk)
+                self.assertEqual(post.text, self.post.text)
+                self.assertEqual(post.group, self.post.group)
+                self.assertEqual(post.author, self.post.author)
+                self.assertEqual(post.image, self.post.image)
                 self.assertRedirects(response, redirect)
 
     def test_create_post_correct_contexts(self):
